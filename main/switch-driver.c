@@ -82,7 +82,7 @@ static void gpio_task_example(void* arg)
 
       if (tx_start) {
         tx_start = false;
-        vTaskDelay(1000 / portTICK_RATE_MS);
+        vTaskDelay(2000 / portTICK_RATE_MS);
         if (dollar_amount) {
   				dollar_amount = dollar_amount / 2;
           printf("{\"event_type\":\"bill_acceptor/\credit\", \"payload\":{\"value\":%d}}", dollar_amount);
