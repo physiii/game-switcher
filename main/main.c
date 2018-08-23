@@ -23,6 +23,8 @@
 #include "soc/ledc_reg.h"
 #include "driver/ledc.h"
 
+#include "switch-driver.c"
+
 extern void
 switch_to_channel_1(void);
 
@@ -208,14 +210,16 @@ lws_esp32_identify_physical_device(void)
 void
 switch_to_channel_1(void)
 {
-	lwsl_notice("HIT %s\n", __func__);
+	switch_input(1);
+	//lwsl_notice("%s\n", __func__);
 }
 
 
 void
 switch_to_channel_2(void)
 {
-	lwsl_notice("HIT %s\n", __func__);
+	switch_input(2);
+	//lwsl_notice("%s\n", __func__);
 }
 
 
@@ -230,6 +234,7 @@ lws_esp32_button(int down)
 
 void app_main(void)
 {
+	switch_main();
 	static struct lws_context_creation_info info;
 	struct lws_vhost *vh;
         ledc_channel_config_t ledc_channel = {

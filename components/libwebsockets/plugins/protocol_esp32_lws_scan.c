@@ -792,7 +792,7 @@ issue:
 
 	case LWS_CALLBACK_RECEIVE:
 		{
-			lwsl_notice("LWS_CALLBACK_RECEIVE: %s\n",(const char *)in);
+			//lwsl_notice("LWS_CALLBACK_RECEIVE: %s\n",(const char *)in);
 			const char *sect = "\"app\": {", *b;
 			nvs_handle nvh;
 			char p[64], use[6];
@@ -805,13 +805,13 @@ issue:
 			}
 
 			if (strstr((const char *)in, "channel1")) {
-				printf("switching to channel 1\n");
+				//printf("switching to channel 1\n");
 				switch_to_channel_1();
 				break;
 			}
 
 			if (strstr((const char *)in, "channel2")) {
-				printf("switching to channel 2\n");
+				//printf("switching to channel 2\n");
 				switch_to_channel_2();
 				break;
 			}
