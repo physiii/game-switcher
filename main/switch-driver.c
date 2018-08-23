@@ -25,6 +25,8 @@ int dollar_amount = 0;
 bool tx_start = false;
 bool tx_delay = false;
 
+char switch_message[500];
+
 static xQueueHandle gpio_evt_queue = NULL;
 
 
@@ -85,13 +87,19 @@ static void gpio_task_example(void* arg)
         vTaskDelay(2000 / portTICK_RATE_MS);
         if (dollar_amount) {
   				dollar_amount = dollar_amount / 2;
-          printf("{\"event_type\":\"bill_acceptor/\credit\", \"payload\":{\"value\":%d}}", dollar_amount);
+
+          sprintf(switch_message,"{\"event_type\":\"bill_acceptor/\credit\", \"payload\":{\"value\":%d}}", dollar_amount);
+          printf(switch_message);
           printf("\n");
         }
         dollar_amount = 0;
       } else {
   			vTaskDelay(1000 / portTICK_RATE_MS);
   		}
+
+      /*sprintf(switch_message,"{\"event_type\":\"bill_acceptor/\credit\", \"payload\":{\"value\":50}}");
+      printf(switch_message);
+      printf("\n");*/
 
     }
 }

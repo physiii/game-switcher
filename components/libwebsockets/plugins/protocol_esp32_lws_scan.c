@@ -465,7 +465,7 @@ callback_esplws_scan(struct lws *wsi, enum lws_callback_reasons reason,
 	int n, m;
 	nvs_handle nvh;
 	size_t s;
-
+	n = 0;
 
 	switch (reason) {
 
@@ -507,6 +507,19 @@ callback_esplws_scan(struct lws *wsi, enum lws_callback_reasons reason,
 		break;
 
 	case LWS_CALLBACK_SERVER_WRITEABLE:
+		//printf("LWS_CALLBACK_SERVER_WRITEABLE\n");
+		if (strcmp(switch_message,"")==0) break;
+		p += snprintf((char *)p, end - p,
+						switch_message);
+		m = lws_write(wsi, (unsigned char *)start, p - start, n);
+		if (m < 0) {
+			lwsl_err("ERROR %d writing to di socket\n", m);
+			return -1;
+		}
+		strcpy(switch_message,"");
+		lws_callback_on_writable(wsi);
+		break;
+
 		if (vhd->autonomous_update_sampled) {
 			p += snprintf((char *)p, end - p,
 				      " {\n \"auton\":\"1\",\n \"pos\": \"%ld\",\n"

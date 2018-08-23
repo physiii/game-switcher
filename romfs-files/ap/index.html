@@ -10,8 +10,7 @@
 
 	<div id=waiting style="width: 54px; height:52px; margin: auto auto; text-align: center; position:absolute; top:50%; left:50%"><img src=spinner.gif></div>
 
-
-
+  <div id="message_panel" style="font-size:15pt;background:#444;color:#ddd;border-color:#000;border-radius:5px;border-size:3px;">Waiting for data...</div>
   <input type=button class="btn" name="channel 1" value="Channel 1" onclick="switch_to_channel_1();" style="font-size:35pt">
   <br><br>
 
@@ -32,6 +31,7 @@ document.getElementById("slot3").checked = false;
 for (m = 0; m < 10; m++)
 	document.getElementById("apsel" + m).checked = false;*/
 
+document.getElementById("message_panel").innerHTML = "{null}";
 function san(s)
 {
 	if (!s)
@@ -94,6 +94,9 @@ function get_appropriate_ws_url()
 		}
 
 		ws.onmessage =function got_packet(msg) {
+
+      console.log("incoming message:",msg);
+      document.getElementById("message_panel").innerHTML = msg.data;
 			//document.getElementById("scan").innerHTML = "<pre>" + msg.data + "</pre>\n";
 			var best, hit, n, m, s, b, a, cs;
 

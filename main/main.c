@@ -18,10 +18,16 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  *  MA  02110-1301  USA
  */
+
+
+
 #include <libwebsockets.h>
 #include <nvs_flash.h>
 #include "soc/ledc_reg.h"
 #include "driver/ledc.h"
+
+
+char switch_message[500];
 
 #include "switch-driver.c"
 
@@ -30,6 +36,7 @@ switch_to_channel_1(void);
 
 extern void
 switch_to_channel_2(void);
+
 
 /* protocol for scan updates over ws and saving wlan setup */
 #include "protocol_esp32_lws_scan.c"
