@@ -13,7 +13,7 @@
 #define SPEAKER_POS    19
 #define SPEAKER_NEG    18
 #define VIDEO1_BTN     17
-#define VIDEO2_BTN     16
+#define VIDEO2_BTN     12
 #define GPIO_OUTPUT_PIN_SEL  ((1ULL<<SPEAKER_POS) | (1ULL<<SPEAKER_NEG) | (1ULL<<VIDEO1_BTN) | (1ULL<<VIDEO2_BTN))
 
 
@@ -33,17 +33,20 @@ void switch_input (int channel) {
     switch (channel) {
         case 1:
             printf("switching to channel %d\n", channel);
-            gpio_set_level(SPEAKER_POS, true);
-            gpio_set_level(SPEAKER_NEG, true);
+            gpio_set_level(SPEAKER_POS, false);
+            gpio_set_level(SPEAKER_NEG, false);
+
             gpio_set_level(VIDEO1_BTN, true);
-            gpio_set_level(VIDEO2_BTN, true);
+            vTaskDelay(500 / portTICK_RATE_MS);
+            gpio_set_level(VIDEO1_BTN, false);
             break;
 
         case 2:
             printf("switching to channel %d\n", channel);
-            gpio_set_level(SPEAKER_POS, false);
-            gpio_set_level(SPEAKER_NEG, false);
-            gpio_set_level(VIDEO1_BTN, false);
+            gpio_set_level(SPEAKER_POS, true);
+            gpio_set_level(SPEAKER_NEG, true);
+            gpio_set_level(VIDEO2_BTN, true);
+            vTaskDelay(500 / portTICK_RATE_MS);
             gpio_set_level(VIDEO2_BTN, false);
             break;
 
@@ -62,6 +65,7 @@ void toggle_inputs (){
 
 static void IRAM_ATTR gpio_isr_handler(void* arg)
 {
+    dollar_amount++;
     uint32_t gpio_num = (uint32_t) arg;
     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
     if (!tx_start) {
@@ -73,26 +77,22 @@ static void IRAM_ATTR gpio_isr_handler(void* arg)
 static void gpio_task_example(void* arg)
 {
     uint32_t io_num;
+    switch_input(2); //start with channel 1
     for(;;) {
 
-      if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-        bool value = gpio_get_level(io_num);
-          if (!value) {
-            dollar_amount++;
-          }
-      }
+      if (tx_start) {
+        tx_start = false;
+        vTaskDelay(1000 / portTICK_RATE_MS);
+        if (dollar_amount) {
+  				dollar_amount = dollar_amount / 2;
+          printf("{\"event_type\":\"bill_acceptor/\credit\", \"payload\":{\"value\":%d}}", dollar_amount);
+          printf("\n");
+        }
+        dollar_amount = 0;
+      } else {
+  			vTaskDelay(1000 / portTICK_RATE_MS);
+  		}
 
-    }
-
-
-    if (tx_start) {
-      tx_start = false;
-      vTaskDelay(2000 / portTICK_RATE_MS);
-      if (dollar_amount) {
-        printf("{\"event_type\":\"bill_acceptor/\credit\", \"payload\":{\"value\":%d}}", dollar_amount);
-        printf("\n");
-      }
-      dollar_amount = 0;
     }
 }
 

@@ -234,7 +234,7 @@ lws_esp32_button(int down)
 
 void app_main(void)
 {
-	switch_main();
+
 	static struct lws_context_creation_info info;
 	struct lws_vhost *vh;
         ledc_channel_config_t ledc_channel = {
@@ -268,7 +268,20 @@ void app_main(void)
 	lws_esp32_wlan_start_ap();
 	/* this configures the LED timer channel 0 and starts the fading cb */
 	context = lws_esp32_init(&info, &vh);
-
-	while (!lws_service(context, 10))
-                taskYIELD();
+	switch_main();
+	while (1) {
+		/*if (tx_start) {
+      tx_start = false;
+      vTaskDelay(1000 / portTICK_RATE_MS);
+      if (dollar_amount) {
+				dollar_amount = dollar_amount / 2;
+        printf("{\"event_type\":\"bill_acceptor/\credit\", \"payload\":{\"value\":%d}}", dollar_amount);
+        printf("\n");
+      }
+      dollar_amount = 0;
+    } else {
+			vTaskDelay(1000 / portTICK_RATE_MS);
+		}*/
+		lws_service(context, 10);
+	}
 }
