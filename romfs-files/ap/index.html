@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset=utf-8 http-equiv="Content-Language" content="en"/>
+ <title>game switcher</title>
+
+</head>
+
+<body style="background-color:#222;">
+
+	<div id=waiting style="width: 54px; height:52px; margin: auto auto; text-align: center; position:absolute; top:50%; left:50%"><img src=spinner.gif></div>
+
+
+  <input type=button class="btn" name="identify" value="ID Device" onclick="do_identify();" style="font-size: 14pt">&nbsp;
+  <input type=button class="btn" name="identify" value="Reboot" onclick="do_reset();" style="font-size: 14pt">
+
+  <input type=button class="btn" name="channel 1" value="channel1" onclick="switch_to_channel_1();" style="font-size:35pt">&nbsp;
+  <input type=button class="btn" name="channel 2" value="channel2" onclick="switch_to_channel_1();" style="font-size: 35pt">&nbsp;
+
+
+<script>
+var ws, sel, host, old, once = 0, jso, m;
+var to = 0, set_int = 0;
+
+/*document.getElementById("slot0").checked = false;
+document.getElementById("slot1").checked = false;
+document.getElementById("slot2").checked = false;
+document.getElementById("slot3").checked = false;
+
+for (m = 0; m < 10; m++)
+	document.getElementById("apsel" + m).checked = false;*/
+
+function san(s)
+{
+	if (!s)
+		return "";
+	if (s.search("<") != -1)
+		return "invalid string";
+
+	return s;
+}
+
+function image_summary(s)
+{
+	if (s.user)
+		return san(s.app) + "<br>" + san(s.git) + "<br>" + san(s.user) +
+			"@" + san(s.builder) + "<br>" + san(s.date);
+
+	return "empty";
+}
+
+function get_appropriate_ws_url()
+{
+	var pcol;
+	var u = document.URL;
+
+	/*
+	 * We open the websocket encrypted if this page came on an
+	 * https:// url itself, otherwise unencrypted
+	 */
+
+	if (u.substring(0, 5) == "https") {
+		pcol = "wss://";
+		u = u.substr(8);
+	} else {
+		pcol = "ws://";
+		if (u.substring(0, 4) == "http")
+			u = u.substr(7);
+	}
+
+	u = u.split('/');
+
+	/* + "/xxx" bit is for IE10 workaround */
+
+	return pcol + u[0] + "/xxx";
+}
+
+	if (typeof MozWebSocket != "undefined")
+		ws = new MozWebSocket(get_appropriate_ws_url(),
+				      "esplws-scan");
+	else
+		ws = new WebSocket(get_appropriate_ws_url(),
+				   "esplws-scan");
+
+	try {
+		ws.onopen = function() {
+
+			document.getElementById("waiting").style.display = "none";
+			console.log("waiting.style.display: " + document.getElementById("waiting").style.display);
+			document.getElementById("realpage").style.opacity = "1.0";
+			heartbeat();
+		}
+
+		ws.onmessage =function got_packet(msg) {
+			//document.getElementById("scan").innerHTML = "<pre>" + msg.data + "</pre>\n";
+			var best, hit, n, m, s, b, a, cs;
+
+			jso = JSON.parse(msg.data);
+			heartbeat();
+			//cs = get_radio('ap');
+/*
+			host = jso.host;
+			if (once == 0) {
+				document.getElementById("model").textContent = jso.model+"-"+jso.serial+"-"+jso.opts;
+				document.getElementById("serial").value = jso.serial;
+				document.getElementById("group").value = jso.group;
+				document.getElementById("role").value = jso.role;
+
+				document.getElementById("le_dns").value = jso.le_dns;
+				document.getElementById("le_email").value = jso.le_email;
+
+				if (jso.forced_button != 1)
+					document.getElementById("access").innerHTML = "<span style=\"font-size:10pt;\">use physical button</span>";
+
+
+				for (n = 0; n < 4; n++) {
+				     if (jso.known[n])
+				    	 document.getElementById("slotap" + parseInt(n)).textContent = jso.known[n].ssid;
+
+					if (jso.known[n].ssid.length)
+						document.getElementById("clr" + parseInt(n)).disabled = 0;
+					document.getElementById("use" + parseInt(n)).textContent = jso.known[n].use;
+				}
+
+				document.getElementById("aps").style.opacity = "1.0";
+				document.getElementById("group").value = jso.group;
+
+				cs = jso.ssid;
+				once = 1;
+			}
+
+			if (jso.auton) {
+
+				document.getElementById("progr").value = parseInt(jso.pos / jso.len * 100);
+
+				if (jso.pos == jso.len) {
+					document.getElementById("realpage").style.display = "none";
+					document.getElementById("waiting").style.display = "block";
+					document.getElementById("progr").class = "progr-ok";
+					setTimeout(function() { window.location.href = location.origin + "/"; }, 1000 );
+				}
+
+			} else {
+
+			document.getElementById("img-factory").innerHTML = image_summary(jso.img_factory);
+			document.getElementById("img-ota").innerHTML = image_summary(jso.img_ota);
+
+			if (jso.latest.app && jso.latest.factory) {
+
+				if (jso.latest.app && (!jso.img_ota.user || jso.img_ota.unixtime < jso.latest.app.unixtime)) {
+					document.getElementById("img-ota-upd").innerHTML = "<table width=100%><tr><td width=49%></td><td align=center><div id=img-ota-upd-icon class=div48><img id=\"img-ota-upd-icon-img\" src=\"setup.png\" class=img128 style=\"top: -984px; left: 0px\"></div></td><td><button onclick=\"get_latest(0);\" style=\"font-size: 14pt\">Update&nbsp;to&nbsp;latest</button></td><td width=49%></td></tr></table>";
+				} else {
+					document.getElementById("img-ota-upd").innerHTML = "<table width=100%><tr><td width=49%></td><td align=center><div id=img-ota-upd-icon class=div48><img id=\"img-ota-upd-icon-img\" src=\"setup.png\" class=img128 style=\"top: -984px; left: -48px\"></div></td><td>Already latest</td><td width=49%></td></tr></table>";
+				}
+
+				if (jso.latest.factory && (!jso.img_factory.user || jso.img_factory.unixtime < jso.latest.factory.unixtime)) {
+					document.getElementById("img-factory-upd").innerHTML =
+						"<table width=100%><tr><td width=49%></td><td align=center><div id=img-factory-upd-icon class=div48>"+
+						"<img id=\"img-factory-upd-icon-img\" src=\"setup.png\" class=img128 style=\"top: -984px; left: 0px\"></div>"+
+						"</td><td><button onclick=\"get_latest(1);\" style=\"font-size: 14pt\">Update&nbsp;to&nbsp;latest</button>"+
+						"<br>(NB: Updating Setup erases Application)</td><td width=49%></td></tr></table>";
+				} else {
+					document.getElementById("img-factory-upd").innerHTML =
+						"<table width=100%><tr><td width=49%></td><td align=center><div id=img-factory-upd-icon class=div48>"+
+						"<img id=\"img-factory-upd-icon-img\" src=\"setup.png\" class=img128 style=\"top: -984px; left: -48px\">"+
+						"</div></td><td>Already latest</td><td width=49%></td></tr></table>";
+				}
+			}
+
+			if (jso.certissuer)
+				document.getElementById("issuer").textContent = san(jso.certissuer);
+			if (jso.certsubject)
+				document.getElementById("subject").textContent = san(jso.certsubject);
+			if (jso.certdays)
+				if (jso.certdays == "0" && jso.certissuer == "" && jso.certsubject == "")
+					document.getElementById("validity").textContent = "(Connect to AP for date)";
+				else
+					document.getElementById("validity").textContent = san(jso.certdays) + " days";
+
+			if (jso.acme_state) {
+				console.log("acme_state: " + parseInt(jso.acme_state) + ", acme_msg: " + jso.acme_msg);
+				set_le_step(parseInt(jso.acme_state), jso.acme_msg);
+			}
+
+			if (jso.inet == 1) {
+				var d = new Date(parseInt(jso.unixtime) * 1000);
+				document.getElementById("inet").style.top = "-254px";
+				document.getElementById("conn_td").class = "group2";
+				document.getElementById("conn_data").style.display = "block";
+				document.getElementById("conn_ap").textContent = san(jso.ssid);
+				document.getElementById("conn_ip").textContent = san(jso.conn_ip);
+				document.getElementById("conn_mask").textContent = san(jso.conn_mask);
+				document.getElementById("conn_gw").textContent = san(jso.conn_gw);
+				document.getElementById("conn_time").textContent = d.toDateString() + " " + san(jso.button);
+
+			} else {
+				document.getElementById("inet").style.top = "-382px";
+				document.getElementById("conn_td").class = "";
+				document.getElementById("conn_data").style.display = "none";
+				document.getElementById("conn_ap").textContent = "";
+				document.getElementById("conn_ip").textContent = "";
+				document.getElementById("conn_mask").textContent = "";
+				document.getElementById("conn_gw").textContent = "";
+				document.getElementById("conn_time").textContent = "";
+			}
+
+			var tbldis = "";
+			if (!get_radio('slot'))
+				tbldis = "disabled style=\"opacity:0.3\"";
+
+			s = "";
+
+			for (m = 0; m < jso.aps.length; m++) {
+
+				best = parseInt(jso.aps[m].rssi);
+
+				b = 0;
+				if (best > -90)
+					b++;
+				if (best > -85)
+					b++;
+				if (best > -80)
+					b++;
+				if (best > -75)
+					b++;
+				if (best > -70)
+					b++;
+				if (best > -65)
+					b++;
+				if (best > -60)
+					b++;
+				if (best > -55)
+					b++;
+
+				a= "";
+				for (n = 0; n < 8; n++)
+					if (n <= b)
+						a = a + "&#x25C9;";
+					else
+						a = a + "&#x25Ce;";
+				var sel = false, ra = "ra";
+				if (cs == san(jso.aps[m].ssid)) {
+					sel = true;
+					ra = "ras";
+					rch(parseInt(m));
+				}
+
+				if (document.getElementById("rr" + parseInt(m))) {
+					document.getElementById("rr" + parseInt(m)).className = ra;
+					document.getElementById("apsel" + parseInt(m)).value = san(jso.aps[m].ssid);
+					document.getElementById("apsel" + parseInt(m)).checked = sel;
+					console.log(get_radio_index('slot') + " " + get_radio_index('ap'));
+					if (!get_radio('slot'))
+						document.getElementById("apsel" + parseInt(m)).disabled = 1;
+					else
+						document.getElementById("apsel" + parseInt(m)).disabled = 0;
+
+					document.getElementById("sr" + parseInt(m) + "1").innerHTML = san(jso.aps[m].ssid);
+					document.getElementById("sr" + parseInt(m) + "2").innerHTML = san(jso.aps[m].chan);
+					document.getElementById("sr" + parseInt(m) + "3").innerHTML = a;
+					document.getElementById("sr" + parseInt(m) + "4").innerHTML =
+						"<div class=div24>"+
+			        		"<img class=img128 src=\"./setup.png\" style=\"top: -896px; left:-" +
+						24 * parseInt(jso.aps[m].auth) + "px\"></div>";
+
+					document.getElementById("sr" + parseInt(m) + "5").innerHTML =
+						"<span style=\"font-size:8pt\">" +
+						san(jso.aps[m].bssid) + "</span>";
+				}
+			}
+
+			if (get_radio('slot')) {
+				document.getElementById("scantable").disabled = 0;
+				document.getElementById("realpage").style.opacity = "1.0";
+			}
+
+    }*/
+
+		}
+
+		ws.onclose = function(){
+			document.getElementById("waiting").style.display = "block";
+			/*document.getElementById("realpage").style.opacity = "0.3";
+			document.getElementById("le_formset").disabled = 1;
+			document.getElementById("le_formset").style.opacity = "0.3";
+			document.getElementById("settings_formset").disabled = 1;
+			document.getElementById("settings_formset").style.opacity = "0.3";*/
+
+		}
+	} catch(exception) {
+		alert('<p>Error' + exception);
+	}
+
+function slch(n)
+{
+	var q;
+
+	/*document.getElementById("join").value = "Set slot " + parseInt(parseInt(get_radio('slot')) + 1);
+	document.getElementById("scanlist").style.opacity = "1.0";
+	document.getElementById('clr' + parseInt(n)).disabled = false;
+	document.getElementById("scantable").disabled = false;
+	document.getElementById("scantable").style.opacity = "1.0";
+	document.getElementById('sltr' + parseInt(n)).className = "ras";
+	for (q = 0; q < 4; q++)
+		if (q != n)
+			document.getElementById('sltr' + parseInt(q)).className = "ra";
+
+	for (q = 0; q < 10; q++)
+		if (!get_radio('slot'))
+			document.getElementById("apsel" + parseInt(q)).disabled = 1;
+		else
+			document.getElementById("apsel" + parseInt(q)).disabled = 0;*/
+}
+/*
+function clr(n)
+{
+	var s = "{\"ssid" + parseInt(n) +"\":\"\",\"pw" + parseInt(n) + "\":\"\",\"slot\":\"" +
+					parseInt(n) + "\"}";
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+	s = "slotap" + n;
+	if ( document.getElementById(s))
+		document.getElementById(s).textContent = "";
+	document.getElementById("clr" + parseInt(n)).disabled = true;
+	document.getElementById("use" + parseInt(n)).textContent = "0";
+}
+
+function chgroup()
+{
+	var s = "{\"group\":\"" + document.getElementById("group").value + "\"}";
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+}
+
+function chrole()
+{
+	var s = "{\"role\":\"" + document.getElementById("role").value + "\"}";
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+}
+
+function get_radio(name)
+{
+	var s = document.getElementsByName(name), sel;
+	for ( var i = 0; i < s.length; i++)
+	    if (s[i].checked) {
+	        sel = s[i].value;
+	        break;
+	    }
+
+	return sel;
+}
+
+function get_radio_index(name)
+{
+	var s = document.getElementsByName(name), i;
+
+	for (i = 0; i < s.length; i++)
+	    if (s[i].checked)
+	        return i;
+
+	return -1;
+}*/
+
+function do_join()
+{
+	var s = "{\"ssid" + parseInt(get_radio('slot')) +"\":\"" + get_radio('ap') + "\",\"pw" +
+		parseInt(get_radio('slot')) + "\":\"" +
+			document.getElementById("pw").value + "\",\"slot\":\"" + parseInt(get_radio('slot')) + "\"}", h;
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+
+//	alert("AP set to " + get_radio('ap'));
+/*
+	if (document.getElementById("serial").value)
+		h = document.getElementById("model").textContent + "-" +
+		    document.getElementById("serial").textContent;
+	else
+		h = host;
+
+	document.getElementById('main').innerHTML =
+		"Thanks, the device is now using the new settings.  " +
+		"Please reconnect yourself to AP <b>" + get_radio() +
+		"</b> and access the device at " +
+		"<a href=\"https://" + host + "\">http://" + h + "</a>";
+*/
+}
+
+function set_access_pw()
+{
+	var s = "{\"setting\":\"1\",\"access_pw\":\"" +
+			document.getElementById("access_pw").value + "\"}", h;
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+}
+
+
+function do_identify()
+{
+	var s = "{\"identify\":\"1\"}";
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+}
+
+function switch_to_channel_1()
+{
+	var s = "{\"channel1\":\"1\"}";
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+}
+
+function switch_to_channel_2()
+{
+	var s = "{\"channel2\":\"1\"}";
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+}
+
+function do_reset()
+{
+	var s = "{\"reset\":\"1\"}";
+	try {
+		ws.send(s);
+	} catch(exception) {
+		alert('Sorry, there was a problem' + exception);
+	}
+
+	ws.close();
+	alert("Rebooting...");
+}
+
+function file_change()
+{
+        document.getElementById('update').disabled = 0;
+}
+
+function reacquire()
+{
+	var xhr = new XMLHttpRequest();
+
+	xhr.onreadystatechange = function(e) {
+		if (xhr.readyState == 4) {
+		    console.log("xhr response " + xhr.status);
+		   if (xhr.status == 200) {
+			   setTimeout(function() { window.location.href = location.origin + "/"; }, 200 );
+		   } else {
+		   	setTimeout(function() { reacquire(); }, 500 );
+		   }
+		}
+	};
+
+	// xhr.timeout = 5;
+	xhr.open("GET", location.origin + "/", true);
+	xhr.send();
+}
+
+function do_upload(f)
+{
+	var xhr = new XMLHttpRequest();
+
+        document.getElementById('update').disabled = 1;
+	//ws.close();
+	document.getElementById("progr").class = "progr-ok";
+
+	xhr.upload.addEventListener("progress", function(e) {
+		document.getElementById("progr").value = parseInt(e.loaded / e.total * 100);
+
+		if (e.loaded == e.total) {
+		//	document.getElementById("realpage").style.display = "none";
+		//	document.getElementById("waiting").style.display = "block";
+		}
+
+	}, false);
+
+	xhr.onreadystatechange = function(e) {
+		   console.log("rs" + xhr.readyState + " status " + xhr.status);
+		if (xhr.readyState == 4) {
+			/* it completed, for good or for ill */
+		//	document.getElementById("realpage").style.display = "none";
+		//	document.getElementById("waiting").style.display = "block";
+			document.getElementById("progr").class = "progr-ok";
+			console.log("upload reached state 4: xhr status " + xhr.status);
+			setTimeout(function() { window.location.href = location.origin + "/"; }, 9000 );
+		}
+	};
+
+	/* kill the heart timer */
+	clearInterval(set_int);
+
+	xhr.open("POST", f.action, true);
+	xhr.send(new FormData(f));
+
+	return false;
+}
+
+function do_settings(f)
+{
+	var xhr = new XMLHttpRequest();
+
+	xhr.onreadystatechange = function(e) {
+		   console.log("do_settings" + xhr.readyState + " status " + xhr.status);
+		if (xhr.readyState == 4) {
+			document.getElementById("updsettings").style.opacity = "1.0";
+			document.getElementById("updsettings").disabled = 0;
+		}
+	};
+
+	xhr.open("POST", f.action, true);
+	document.getElementById("updsettings").style.opacity = "0.3";
+	document.getElementById("updsettings").disabled = 1;
+	xhr.send(new FormData(f));
+
+	return false;
+}
+
+function get_latest(n)
+{
+	if (n == 0)
+		ws.send("update-ota");
+	else
+		ws.send("update-factory");
+}
+
+function passphrase_disable(n)
+{
+	if (n == "")
+		document.getElementById('pw').disabled = 0;
+	else
+		document.getElementById('pw').disabled = 1;
+	if (n)
+		document.getElementById('pwt').style.color = "#808080";
+	else
+		document.getElementById('pwt').style.color = "#000000";
+}
+
+function rch(mm)
+{
+	var q, m;
+	var sel = get_radio('ap');
+	var butok = 1;
+	var need_pw = 0;
+
+
+	m = mm;//get_radio_index('ap');
+
+	if (sel == "")
+		butok = 0;
+
+	console.log("old " + old);
+
+        if (old && old != "" && old != m)
+	      document.getElementById("rr" + parseInt(old)).className = "ra";
+	old = m;
+
+	q = "slotap" + get_radio("slot");
+	console.log("m = '" + m + "', q =" + q);
+	if (document.getElementById(q))
+		document.getElementById(q).textContent = sel;
+
+	if (m >= 0) {
+		if (document.getElementById("rr" + parseInt(m)))
+			document.getElementById("rr" + parseInt(m)).className = "ras";
+
+		console.log("get_radio_index " + m);
+		if (m >= 0)
+			need_pw = jso.aps[m].auth;
+	}
+
+	console.log("butok " + butok + "need_pw " + need_pw);
+
+	passphrase_disable(!butok || need_pw == 0);
+
+	if (need_pw != 0)
+		if (!document.getElementById("pw").value)
+			butok = 0;
+
+	document.getElementById('join').disabled = !butok;
+//	document.getElementById('scan').disabled = !butok;
+}
+
+function chle()
+{
+	if (document.getElementById("le_dns").value &&
+	    document.getElementById("le_dns").value != "" &&
+	    document.getElementById("le_email").value &&
+	    document.getElementById("le_email").value != "")
+		document.getElementById("getle").disabled = 0;
+	else
+		document.getElementById("getle").disabled = 1;
+}
+
+function get_le()
+{
+	var s = '{"job":"start-le","cn":"'+
+		document.getElementById("le_dns").value +
+		'","email":"' + document.getElementById("le_email").value +
+		'","staging":"' + document.getElementById("staging").checked +
+		'"}';
+
+	document.getElementById("getle").disabled = 1;
+	ws.send(s);
+}
+
+var le_last_non_failed = 0;
+
+function set_le_step(st, info)
+{
+	var n, s = "", m = st;
+
+	if (st == 2 || st == 3)
+		document.getElementById("getle").disabled = 0;
+
+	/* 3 = failed */
+	if (st == 3)
+		m = le_last_non_failed;
+	else
+		le_last_non_failed = st;
+
+	if (m >= 4 /*LWS_CUS_CREATE_KEYS */ || m == 2) {
+		if (m == 2)
+			m = 9 + 3;
+		for (n = 1; n < m - 3; n++) {
+			console.log("leli" + n + " to done");
+			document.getElementById("leli" + n).className = "done";
+		}
+
+		if (st != 3) {
+			console.log("leli" + (m - 3) + " to active");
+			document.getElementById("leli" + (m - 3)).className = "active";
+		} else {
+			console.log("leli" + (m - 3) + " to fail");
+			document.getElementById("leli" + (m - 3)).className = "fail";
+		}
+
+		for (n = m + 1 - 3; n < 10; n++)
+			document.getElementById("leli" + n).className = "";
+	}
+
+	switch (st) {
+	case 4: /* LWS_CUS_CREATE_KEYS */
+		s = "Generating auth keys, please wait";
+		break;
+	case 5: /* LWS_CUS_REG */
+		s = "Registering auth keys";
+		break;
+	case 6: /* LWS_CUS_AUTH */
+		s = "Authenticating using auth keys";
+		break;
+	case 7: /* LWS_CUS_CHALLENGE */
+		s = "Preparing challenge, this may take a few moments";
+		break;
+	case 8: /* LWS_CUS_CREATE_REQ */
+		s = "Generating keys for CSR, this may take a few moments";
+		break;
+	case 9: /* LWS_CUS_REQ */
+		s = "Requesting certificate signing";
+		break;
+	case 10: /* LWS_CUS_CONFIRM */
+		s = "Undergoing challenge...";
+		break;
+	case 11: /* LWS_CUS_ISSUE */
+		s = "Waiting for certificate issue";
+		break;
+	case 2: /* LWS_CUS_SUCCESS */
+		s = "Completed successfully";
+		break;
+	case 3: /* LWS_CUS_FAILED */
+		s = "Failed";
+		break;
+	}
+
+	document.getElementById("le_exp").innerHTML = s;
+	document.getElementById("le_info").innerHTML = info;
+}
+
+function heart_timer() {
+	var s;
+
+	s = Math.round((95 * to) / (40 * 10)) / 100;
+
+	if (s < 0) {
+		clearInterval(set_int);
+		set_int = 0;
+
+		ws.close();
+
+		document.getElementById("realpage").style.opacity = "0.3";
+	}
+
+
+	to--;
+	document.getElementById("heart").style.opacity = s;
+}
+
+
+function heartbeat()
+{
+	to = 40 * 10;
+	if (!set_int) {
+		set_int = setInterval(heart_timer, 100);
+	}
+
+}
+
+</script>
+
+</body>
+</html>
